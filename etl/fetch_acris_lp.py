@@ -9,11 +9,13 @@ def run():
 
     since = (dt.date.today() - dt.timedelta(days=90)).strftime("%Y-%m-%dT00:00:00")
 
-    params = {}
-    params["$select"]      = "bbl,document_date,document_type"
-    params["$where"]       = f"document_date >= '{since}'"
-    params["$limit"]       = 50000
-    params["$$app_token"]  = token  # Socrata looks for this exact key
+    params = {
+    "$select": "document_date,doc_type,recorded_borough,block,lot",   # ← COMMA here
+    "$where": f"document_date >= '{since}'",                          # ← COMMA here
+    "$limit": 50000,                                                  # ← COMMA here
+    "$$app_token": token                                              # ← last item, no comma
+}
+
 
     # ----- DEBUG: print the URL without the token -----
     dbg = {k:v for k,v in params.items() if k != "$$app_token"}
@@ -28,11 +30,21 @@ def run():
         print("Acris LP: 0 rows (last 90d)")
         return pd.DataFrame(columns=["bbl", "lp_date"])
 
-    df = df[df["document_type"].str.contains("LIS", case=False, na=False)]
-    df["bbl"]     = df["bbl"].str.zfill(10)
-    df["lp_date"] = pd.to_datetime(df["document_date"]).dt.date
-    print(f"Acris LP rows kept: {len(df)}")
-    return df[["bbl", "lp_date"]]
+    # keep only Lis Pendens rows (any variant)
+df = df[df["doc_type"].str.contains("LIS", case=False, na=False)]
+
+# build a zero‑padded 10‑digit BBL from borough / block / lot
+df["bbl"] = (
+    df["recorded_borough"].str.zfill(1)
+    + df["block"].str.zfill(5)
+    + df["lot"].str.zfill(4)
+)
+
+# convert date to python date
+df["lp_date"] = pd.to_datetime(df["document_date"]).dt.date
+
+print(f"Acris LP rows kept: {len(df)}")
+return df[["bbl", "lp_date"]]
 
 
 
