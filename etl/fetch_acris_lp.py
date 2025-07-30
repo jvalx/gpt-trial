@@ -23,7 +23,12 @@ def run() -> pd.DataFrame:
 
     # debug: print query without token
     dbg = {k: v for k, v in params.items() if k != "$$app_token"}
-    print("ACRIS URL:", API + "?" + up.urlencode(dbg, safe=\"':,>= "))
+    # either keep the safe‑chars (no back‑slashes):
+print("ACRIS URL:", API + "?" + up.urlencode(dbg, safe="':,>="))
+
+# …or simplest—omit the safe parameter:
+print("ACRIS URL:", API + "?" + up.urlencode(dbg))
+
 
     r = requests.get(API, params=params, timeout=30)
     r.raise_for_status()
