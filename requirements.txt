@@ -1,0 +1,5 @@
+pandas>=2.2
+geopandas>=0.14          # for heat‑map
+matplotlib>=3.8
+playwright>=1.44
+requests
