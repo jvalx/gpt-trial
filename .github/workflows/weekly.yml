@@ -1,0 +1,40 @@
+name: Weekly Distressed‑Seller Radar
+
+on:
+  schedule:
+    # 05:00 ET every Monday  ⇢  09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:              # <-- lets you run it on‑demand
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      NYC_APP_TOKEN: ${{ secrets.NYC_APP_TOKEN }}
+      NASSAU_USER:   ${{ secrets.NASSAU_USER }}
+      NASSAU_PASS:   ${{ secrets.NASSAU_PASS }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install deps
+      run: |
+        pip install -r requirements.txt
+        playwright install chromium
+
+    - name: Run pipeline
+      run: python etl/main.py
+
+    # Zip & keep outputs for easy download
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: distressed-seller-radar
+        path: outputs/
+        retention-days: 7
