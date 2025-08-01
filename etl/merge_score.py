@@ -4,14 +4,19 @@ import requests
 import os, requests, pandas as pd
 
 def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Fetch mailing address info for a list of BBLs from NYC Property Address Directory (PAD) view.
+    """
     token = os.getenv("NYC_APP_TOKEN")
-    API   = "https://data.cityofnewyork.us/resource/bc8t-ecyu.json"
+    if not token:
+        raise RuntimeError("NYC_APP_TOKEN is missing or invalid")
 
-    # Build an IN-list of quoted BBLs
+    API = "https://data.cityofnewyork.us/resource/bc8t-ecyu.json"
+    # Build a SoQL IN-list of quoted BBLs
     bbl_list = "', '".join(df["bbl"])
-    where    = f"bbl IN ('{bbl_list}')"
+    where_clause = f"bbl IN ('{bbl_list}')"
 
-          params = {
+    params = {
         "$select": ",".join([
             "bbl",
             "house_number",
@@ -22,18 +27,15 @@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
             "owner_state",
             "owner_zip"
         ]),
-        "$where": where,
+        "$where": where_clause,
         "$limit": len(df),
     }
-    headers = {
-        "X-App-Token": token
-    }
-    resp = requests.get(API, params=params, headers=headers, timeout=30)
-
-    resp.raise_for_status()
-    addr = pd.DataFrame(resp.json())
-
-    return df.merge(addr, on="bbl", how="left")
+    headers = {"X-App-Token": token}
+    response = requests.get(API, params=params, headers=headers, timeout=30)
+    response.raise_for_status()
+    addr_df = pd.DataFrame(response.json())
+    # Merge mailing info back into the main DataFrame
+    return df.merge(addr_df, on="bbl", how="left")
 
 
 def run(acris, liens, viols, vacate, nassau):
