@@ -30,7 +30,7 @@ def run(acris, liens, viols, vacate, nassau):
     df = pd.concat([df, nassau.rename(columns={"sbl":"bbl"})], ignore_index=True)
 
     # 5. Filter & rank
-    df = df[df["score"] >= 3]
+    df = df[df["score"] >= 1]
     df = df.sort_values(["score", "lp_date"], ascending=[False, False]).head(100)
 
     # ensure outputs dir
