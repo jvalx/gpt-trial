@@ -73,20 +73,15 @@ def run(acris, liens, viols, vacate, nassau):
     
      
  
+     # 6. Enrich with mailing addresses
+    enriched_df = enrich_addresses(df)
+
     # ensure outputs dir
     os.makedirs("outputs", exist_ok=True)
 
-    
-    # Attempt enrichment
-    try:
-        enriched = enrich_addresses(df)
-    except Exception as e:
-        print(f"❌  Address enrichment failed, skipping: {e}")
-        enriched = df.copy()
-
-    
-    # write both the plain and enriched outputs (optional)
+    # 7. Write CSVs
     df.to_csv("outputs/top100.csv", index=False)
-    enriched.to_csv("outputs/top100_enriched.csv", index=False)
-    return enriched
+    enriched_df.to_csv("outputs/top100_enriched.csv", index=False)
+
+    return enriched_df
     # ... heat-map code ...
