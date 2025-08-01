@@ -1,6 +1,33 @@
 import pandas as pd, geopandas as gpd, os
 import requests   
 
+import os, requests, pandas as pd
+
+def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
+    token = os.getenv("NYC_APP_TOKEN")
+    API   = "https://data.cityofnewyork.us/resource/bc8t-ecyu.json"
+
+    # Build an IN-list of quoted BBLs
+    bbl_list = "', '".join(df["bbl"])
+    where    = f"bbl IN ('{bbl_list}')"
+
+    params = {
+        "$select":     ",".join([
+            "bbl","house_number","street_name","owner_name",
+            "owner_address1","owner_city","owner_state","owner_zip"
+        ]),
+        "$where":      where,
+        "$$app_token": token,
+        "$limit":      len(df),
+    }
+
+    resp = requests.get(API, params=params, timeout=30)
+    resp.raise_for_status()
+    addr = pd.DataFrame(resp.json())
+
+    return df.merge(addr, on="bbl", how="left")
+
+
 def run(acris, liens, viols, vacate, nassau):
     # 1. Build a master list of BBLs from all NYC feeds
     keys = pd.concat([
@@ -34,22 +61,14 @@ def run(acris, liens, viols, vacate, nassau):
     df = df[df["score"] >= 1]
     df = df.sort_values(["score", "lp_date"], ascending=[False, False]).head(100)
     
-    # 6. Pull mailing info
-    token = os.getenv("NYC_APP_TOKEN")
-    params = {
-        "bbl":         ",".join(df["bbl"]),
-        "$select":     "bbl,house_number,street_name,owner_name,owner_address1,owner_city,owner_state,owner_zip",
-        "$$app_token": token,
-    }
-    res = requests.get("https://data.cityofnewyork.us/resource/8xzq-5wkg.json", params=params)
-    res.raise_for_status()
-    addr = pd.DataFrame(res.json())
-
-    # 7. Merge address back into the results
-    merged = df.merge(addr, on="bbl", how="left")
-
+     # enrich with mailing address info
+    enriched = enrich_addresses(df)
+ 
     # ensure outputs dir
     os.makedirs("outputs", exist_ok=True)
+    
+    # write both the plain and enriched outputs (optional)
     df.to_csv("outputs/top100.csv", index=False)
-
+    enriched.to_csv("outputs/top100_enriched.csv", index=False)
+    return enriched
     # ... heat-map code ...
