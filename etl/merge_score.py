@@ -11,16 +11,25 @@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
     bbl_list = "', '".join(df["bbl"])
     where    = f"bbl IN ('{bbl_list}')"
 
-      params = {
-+        "$select": ",".join([
-+            "bbl","house_number","street_name","owner_name",
-+            "owner_address1","owner_city","owner_state","owner_zip"
-+        ]),
-+        "$where": where,
-+        "$limit": len(df),
-+    }
-+    headers = {"X-App-Token": token}
+          params = {
+        "$select": ",".join([
+            "bbl",
+            "house_number",
+            "street_name",
+            "owner_name",
+            "owner_address1",
+            "owner_city",
+            "owner_state",
+            "owner_zip"
+        ]),
+        "$where": where,
+        "$limit": len(df),
+    }
+    headers = {
+        "X-App-Token": token
+    }
     resp = requests.get(API, params=params, headers=headers, timeout=30)
+
     resp.raise_for_status()
     addr = pd.DataFrame(resp.json())
 
