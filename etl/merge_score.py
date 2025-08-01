@@ -30,8 +30,8 @@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
         "$where": where_clause,
         "$limit": len(df),
     }
-    headers = {"X-App-Token": token}
-    response = requests.get(API, params=params, headers=headers, timeout=30)
+ headers = {"X-App-Token": os.getenv("NYC_APP_TOKEN")}
+resp = requests.get(API, params=params, headers=headers, timeout=30)
     response.raise_for_status()
     addr_df = pd.DataFrame(response.json())
     # Merge mailing info back into the main DataFrame
@@ -74,7 +74,11 @@ def run(acris, liens, viols, vacate, nassau):
      
  
      # 6. Enrich with mailing addresses
+    try:
     enriched_df = enrich_addresses(df)
+except Exception as e:
+    print(f"Address enrichment failed ({e}): skipping")
+    enriched_df = df.copy()
 
     # ensure outputs dir
     os.makedirs("outputs", exist_ok=True)
