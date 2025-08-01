@@ -11,17 +11,16 @@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
     bbl_list = "', '".join(df["bbl"])
     where    = f"bbl IN ('{bbl_list}')"
 
-    params = {
-        "$select":     ",".join([
-            "bbl","house_number","street_name","owner_name",
-            "owner_address1","owner_city","owner_state","owner_zip"
-        ]),
-        "$where":      where,
-        "$$app_token": token,
-        "$limit":      len(df),
-    }
-
-    resp = requests.get(API, params=params, timeout=30)
+      params = {
++        "$select": ",".join([
++            "bbl","house_number","street_name","owner_name",
++            "owner_address1","owner_city","owner_state","owner_zip"
++        ]),
++        "$where": where,
++        "$limit": len(df),
++    }
++    headers = {"X-App-Token": token}
+    resp = requests.get(API, params=params, headers=headers, timeout=30)
     resp.raise_for_status()
     addr = pd.DataFrame(resp.json())
 
@@ -61,11 +60,19 @@ def run(acris, liens, viols, vacate, nassau):
     df = df[df["score"] >= 1]
     df = df.sort_values(["score", "lp_date"], ascending=[False, False]).head(100)
     
-     # enrich with mailing address info
-    enriched = enrich_addresses(df)
+     
  
     # ensure outputs dir
     os.makedirs("outputs", exist_ok=True)
+
+    
+    # Attempt enrichment
+    try:
+        enriched = enrich_addresses(df)
+    except Exception as e:
+        print(f"❌  Address enrichment failed, skipping: {e}")
+        enriched = df.copy()
+
     
     # write both the plain and enriched outputs (optional)
     df.to_csv("outputs/top100.csv", index=False)
