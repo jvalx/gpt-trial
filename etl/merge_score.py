@@ -21,7 +21,7 @@ def run(acris, liens, viols, vacate, nassau):
     # TODO: add Nassau lien/viol equivalents if desired
 
     df = pd.concat([df, nassau.rename(columns={"sbl": "bbl"})], ignore_index=True)
-    df = df[df["score"] >= 3]
+    df = df[df["score"] >= 1]
     df = df.sort_values(["score", "lp_date"], ascending=[False, False]).head(100)
     df.to_csv("outputs/top100.csv", index=False)
 
