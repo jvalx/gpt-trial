@@ -1,4 +1,7 @@
 import pandas as pd, geopandas as gpd
+import os
+os.makedirs("outputs", exist_ok=True)
+
 
 def run(acris, liens, viols, vacate, nassau):
     # NYC merge on BBL
