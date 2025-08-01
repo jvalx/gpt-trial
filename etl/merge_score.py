@@ -1,4 +1,5 @@
 import pandas as pd, geopandas as gpd, os
+import requests   
 
 def run(acris, liens, viols, vacate, nassau):
     # 1. Build a master list of BBLs from all NYC feeds
@@ -32,6 +33,20 @@ def run(acris, liens, viols, vacate, nassau):
     # 5. Filter & rank
     df = df[df["score"] >= 1]
     df = df.sort_values(["score", "lp_date"], ascending=[False, False]).head(100)
+    
+    # 6. Pull mailing info
+    token = os.getenv("NYC_APP_TOKEN")
+    params = {
+        "bbl":         ",".join(df["bbl"]),
+        "$select":     "bbl,house_number,street_name,owner_name,owner_address1,owner_city,owner_state,owner_zip",
+        "$$app_token": token,
+    }
+    res = requests.get("https://data.cityofnewyork.us/resource/8xzq-5wkg.json", params=params)
+    res.raise_for_status()
+    addr = pd.DataFrame(res.json())
+
+    # 7. Merge address back into the results
+    merged = df.merge(addr, on="bbl", how="left")
 
     # ensure outputs dir
     os.makedirs("outputs", exist_ok=True)
