@@ -50,6 +50,65 @@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
     return df.merge(addr_df[keep_cols], on="bbl", how="left")
 
 
+def run(acris, liens, viols, vacate, nassau):
+    """
+    Merge sources by BBL, compute distress score, filter/top-N, enrich addresses,
+    write outputs, and return the (possibly enriched) DataFrame.
+    """
+    import os
+    import logging
+    import pandas as pd
+
+    # 1) Keys: union of all NYC BBLs
+    keys = pd.concat(
+        [acris.get("bbl", pd.Series(dtype=str)),
+         liens.get("bbl", pd.Series(dtype=str)),
+         viols.get("bbl", pd.Series(dtype=str)),
+         vacate.get("bbl", pd.Series(dtype=str))],
+        ignore_index=True,
+    ).dropna().drop_duplicates().to_frame(name="bbl")
+
+    # 2) Join each NYC feed
+    df = (
+        keys
+        .merge(acris, how="left", on="bbl")
+        .merge(liens, how="left", on="bbl")
+        .merge(viols, how="left", on="bbl")
+        .merge(vacate, how="left", on="bbl")
+    )
+
+    # 3) Score (LP=2, others=1 each)
+    df["score"] = (
+        df.get("lp_date").notna().astype(int) * 2
+        + df.get("lien_flag", 0).fillna(0).astype(int)
+        + df.get("viol_flag", 0).fillna(0).astype(int)
+        + df.get("vacate_flag", 0).fillna(0).astype(int)
+    )
+
+    # 4) Append Nassau (SBL treated like LP-only, score=2)
+    if nassau is not None and not nassau.empty:
+        nassau_copy = nassau.rename(columns={"sbl": "bbl"}).copy()
+        nassau_copy["score"] = 2
+        df = pd.concat([df, nassau_copy], ignore_index=True)
+
+    # 5) Filter & rank
+    threshold = int(os.getenv("SCORE_THRESHOLD", "3"))
+    df = df[df["score"] >= threshold]
+    df = df.sort_values(["score", "lp_date"], ascending=[False, False]).head(100)
+
+    # 6) Address enrichment (best-effort)
+    try:
+        enriched_df = enrich_addresses(df)
+    except Exception as e:
+        logging.warning("Address enrichment failed (%s): %s", e.__class__.__name__, e)
+        enriched_df = df.copy()
+
+    # 7) Write outputs
+    os.makedirs("outputs", exist_ok=True)
+    df.to_csv("outputs/top100.csv", index=False)
+    enriched_df.to_csv("outputs/top100_enriched.csv", index=False)
+
+    return enriched_df
 
 
 
