@@ -18,7 +18,9 @@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
         )
     where_clause = " OR ".join(conditions)
 
-    url = "https://data.cityofnewyork.us/resource/PadPropertyAddressDirectory.json"
+    dataset = os.getenv("NYC_PAD_DATASET", "duz4-2gn9")  # PAD dataset id; case-insensitive
+    url = f"https://data.cityofnewyork.us/resource/{dataset}.json"
+
     params = {
         "$select": ",".join([
             "boro","block","lot",
