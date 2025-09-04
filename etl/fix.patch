@@ -1,0 +1,36 @@
+*** Begin Patch
+*** Update File: etl/merge_score.py
+@@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
+-    params = {
+-        "$select": ",".join([
++    # Build $where clause for all BBLs in df
++    bbls = df["bbl"].astype(str).tolist()
++    conditions = []
++    for bbl in bbls:
++        boro = int(bbl[0])
++        block = int(bbl[1:6])
++        lot = int(bbl[6:])
++        conditions.append(f"(boro={boro} AND block={block} AND lot={lot})")
++    where_clause = " OR ".join(conditions)
++    params = {
+         "$select": ",".join([
+             "boro","block","lot",
+             "house_number","street_name","owner_name",
+             "owner_address1","owner_city","owner_state","owner_zip"
+         ]),
+-        "$where": where,
++        "$where": where_clause,
+         "$limit": len(df),
+         }
+@@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
+-    addr_df = pd.DataFrame(resp.json())
+-
+-    return df.merge(addr_df, on="bbl", how="left")
++    addr_df = pd.DataFrame(resp.json())
++    if addr_df.empty:
++        return df
++    addr_df["bbl"] = (addr_df["boro"].astype(str).str.zfill(1) +
++                      addr_df["block"].astype(str).str.zfill(5) +
++                      addr_df["lot"].astype(str).str.zfill(4))
++    return df.merge(addr_df, on="bbl", how="left")
+*** End Patch
