@@ -76,7 +76,7 @@ def enrich_addresses(df: pd.DataFrame) -> pd.DataFrame:
 #         "house_number","street_name","owner_name",
 #         "owner_address1","owner_city","owner_state","owner_zip"
 #     ]),
-#     "$where": where,
+#     "$where": where_clause,
 #     "$limit": len(df),
 #     }
 #     headers = {"X-App-Token": token}
